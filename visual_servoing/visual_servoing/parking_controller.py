@@ -36,10 +36,45 @@ class ParkingController(Node):
         self.relative_y = msg.y_pos
         drive_cmd = AckermannDriveStamped()
 
-        #################################
 
+        #################################
         # YOUR CODE HERE
         # Use relative position and your control law to set drive_cmd
+        self.max_steering_angle = 0.34 # radians
+        self.wheelbase = 0.3302 # Wheelbase, meters
+        self.car_min_turning_radius = self.wheelbase / np.tan(self.max_steering_angle) # meters, ~ 0.9335
+
+        angle_to_cone = np.arctan2(self.relative_y, self.relative_x) # radians
+        distance_to_cone = np.sqrt(self.relative_x**2 + self.relative_y**2) # meters
+
+        if distance_to_cone > self.parking_distance:
+            if self.relative_y > 0: # left turn
+                cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y - self.car_min_turning_radius)**2)
+            if self.relative_y < 0: # right turn
+                cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y + self.car_min_turning_radius)**2)
+            else: # Directly ahead
+                cone_to_rad_center = distance_to_cone - self.car_min_turning_radius
+            tangent_length = np.sqrt(cone_to_rad_center**2 - self.car_min_turning_radius**2)
+
+            if tangent_length < self.parking_distance:
+                # need to reverse 1st
+                drive_cmd.drive.steering_angle = -angle_to_cone
+                drive_cmd.drive.speed = -1
+                # Then can go forward 
+                if tangent_length >= self.parking_distance:
+                    drive_cmd.drive.steering_angle = angle_to_cone
+                    drive_cmd.drive.speed = 1 
+            
+            else:
+                drive_cmd.drive.steering_angle = angle_to_cone
+                drive_cmd.drive.speed = 1
+        
+        if distance_to_cone < self.parking_distance:
+            drive_cmd.drive.steering_angle = -angle_to_cone
+            drive_cmd.drive.speed = -1
+        
+        if distance_to_cone == self.parking_distance:
+            drive_cmd.drive.speed = 0
 
         #################################
 
