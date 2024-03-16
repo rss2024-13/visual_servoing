@@ -55,43 +55,48 @@ class ParkingController(Node):
         angle_to_cone = np.arctan2(self.relative_y, self.relative_x) # radians
         distance_to_cone = np.sqrt(self.relative_x**2 + self.relative_y**2) # meters
 
-        self.forward_speed = min(1.0, np.sqrt(abs(distance_to_cone-self.parking_distance)/4) + 0.1)
+        self.forward_speed = min(1.0, np.sqrt(abs(distance_to_cone-self.parking_distance)) + 0.1)
         self.backward_speed = -self.forward_speed
 
-        if self.relative_x < 0:
-            self.need_to_back_up = True
+        
+        
 
-        if abs(distance_to_cone - self.parking_distance) < self.cone_distance_delta and abs(angle_to_cone) < self.approach_angle_delta:
+
+        if self.relative_x  > 0 and abs(distance_to_cone - self.parking_distance) < self.cone_distance_delta and abs(angle_to_cone) < self.approach_angle_delta:
             self.get_logger().info(f'happy distance of {distance_to_cone - self.parking_distance}')
             drive_cmd.drive.speed = 0.0
             drive_cmd.drive.steering_angle = 0.0
-        
-        elif distance_to_cone > self.parking_distance:
-            self.get_logger().info(f'too far away: {distance_to_cone - self.parking_distance}')
-            if self.relative_y > 0: # left turn
-                cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y - self.car_min_turning_radius)**2)
-            else: # if  self.relative_y <= 0: # right turn
-                cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y + self.car_min_turning_radius)**2)
-            
-            tangent_length = np.sqrt(cone_to_rad_center**2 - self.car_min_turning_radius**2)
-
-            if tangent_length < self.parking_distance * (1 + self.need_to_back_up*0.5):
-                # need to reverse 1st
+        else:
+            if self.relative_x < 0:
                 self.need_to_back_up = True
+        
+            elif distance_to_cone > self.parking_distance:
+                self.get_logger().info(f'too far away: {distance_to_cone - self.parking_distance}')
+                if self.relative_y > 0: # left turn
+                    cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y - self.car_min_turning_radius)**2)
+                else: # if  self.relative_y <= 0: # right turn
+                    cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y + self.car_min_turning_radius)**2)
+                
+                tangent_length = np.sqrt(cone_to_rad_center**2 - self.car_min_turning_radius**2)
+
+                if tangent_length < self.parking_distance * (1 + self.need_to_back_up*0.5):
+                    # need to reverse 1st
+                    self.need_to_back_up = True
+                    # Then can go forward 
+                else:
+                    self.need_to_back_up = False
+            
+        
+            else: # if distance_to_cone < self.parking_distance or good distance but not facing the cone:
+                self.get_logger().info(f'too close: {distance_to_cone - self.parking_distance}')
+                self.need_to_back_up = True
+
+            if self.need_to_back_up:
                 drive_cmd.drive.steering_angle = -angle_to_cone
                 drive_cmd.drive.speed = self.backward_speed
-                # Then can go forward 
             else:
-                self.need_to_back_up = False
                 drive_cmd.drive.steering_angle = angle_to_cone
-                drive_cmd.drive.speed = self.forward_speed 
-            
-        
-        else: # if distance_to_cone < self.parking_distance or good distance but not facing the cone:
-            self.get_logger().info(f'too close: {distance_to_cone - self.parking_distance}')
-            self.need_to_back_up = True
-            drive_cmd.drive.steering_angle = -angle_to_cone
-            drive_cmd.drive.speed = self.backward_speed
+                drive_cmd.drive.speed = self.forward_speed
         
         self.last_wheel_angle = drive_cmd.drive.steering_angle
         self.last_car_velocity = drive_cmd.drive.speed
