@@ -49,6 +49,7 @@ class ParkingController(Node):
 
         if distance_to_cone > self.parking_distance:
             if self.relative_y > 0: # left turn
+                # Distance from cone to center of circle circumscribed by car's min radius
                 cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y - self.car_min_turning_radius)**2)
             if self.relative_y < 0: # right turn
                 cone_to_rad_center = np.sqrt((self.relative_x)**2 + (self.relative_y + self.car_min_turning_radius)**2)
@@ -89,9 +90,12 @@ class ParkingController(Node):
         error_msg = ParkingError()
 
         #################################
-
         # YOUR CODE HERE
         # Populate error_msg with relative_x, relative_y, sqrt(x^2+y^2)
+        x = self.relative_x
+        y = self.relative_y
+        
+        error_msg = self.parking_distance - np.sqrt(x**2 + y**2)
 
         #################################
         
