@@ -55,7 +55,7 @@ class ParkingController(Node):
         angle_to_cone = np.arctan2(self.relative_y, self.relative_x) # radians
         distance_to_cone = np.sqrt(self.relative_x**2 + self.relative_y**2) # meters
 
-        self.forward_speed = min(1, np.sqrt(abs(distance_to_cone-self.parking_distance)/4) + 0.1)
+        self.forward_speed = min(1.0, np.sqrt(abs(distance_to_cone-self.parking_distance)/4) + 0.1)
         self.backward_speed = -self.forward_speed
 
         if self.relative_x < 0:
