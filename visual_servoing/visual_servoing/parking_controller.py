@@ -32,7 +32,8 @@ class ParkingController(Node):
         self.need_to_back_up = False
         self.last_wheel_angle = 0.0
         self.last_car_velocity = 0.0
-        self.approach_angle_delta = 0.2 # rad
+        self.cone_distance_delta = 0.1 # meters
+        self.approach_angle_delta = 0.15 # rad
 
         self.get_logger().info("Parking Controller Initialized")
 
@@ -54,10 +55,13 @@ class ParkingController(Node):
         angle_to_cone = np.arctan2(self.relative_y, self.relative_x) # radians
         distance_to_cone = np.sqrt(self.relative_x**2 + self.relative_y**2) # meters
 
-        self.forward_speed = np.sqrt(abs(distance_to_cone-self.parking_distance)/4) + 0.1
-        self.backward_speed = -(np.sqrt(abs(distance_to_cone-self.parking_distance)/4) + 0.1)
+        self.forward_speed = min(1, np.sqrt(abs(distance_to_cone-self.parking_distance)/4) + 0.1)
+        self.backward_speed = -self.forward_speed
 
-        if abs(distance_to_cone - self.parking_distance) < 0.1 and abs(angle_to_cone) < self.approach_angle_delta:
+        if self.relative_x < 0:
+            self.need_to_back_up = True
+
+        if abs(distance_to_cone - self.parking_distance) < self.cone_distance_delta and abs(angle_to_cone) < self.approach_angle_delta:
             self.get_logger().info(f'happy distance of {distance_to_cone - self.parking_distance}')
             drive_cmd.drive.speed = 0.0
             drive_cmd.drive.steering_angle = 0.0
@@ -71,18 +75,21 @@ class ParkingController(Node):
             
             tangent_length = np.sqrt(cone_to_rad_center**2 - self.car_min_turning_radius**2)
 
-            if tangent_length < self.parking_distance:
+            if tangent_length < self.parking_distance * (1 + self.need_to_back_up*0.5):
                 # need to reverse 1st
+                self.need_to_back_up = True
                 drive_cmd.drive.steering_angle = -angle_to_cone
                 drive_cmd.drive.speed = self.backward_speed
                 # Then can go forward 
             else:
+                self.need_to_back_up = False
                 drive_cmd.drive.steering_angle = angle_to_cone
                 drive_cmd.drive.speed = self.forward_speed 
             
         
         else: # if distance_to_cone < self.parking_distance or good distance but not facing the cone:
             self.get_logger().info(f'too close: {distance_to_cone - self.parking_distance}')
+            self.need_to_back_up = True
             drive_cmd.drive.steering_angle = -angle_to_cone
             drive_cmd.drive.speed = self.backward_speed
         
