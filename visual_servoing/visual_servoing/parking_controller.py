@@ -17,7 +17,7 @@ class ParkingController(Node):
         super().__init__("parking_controller")
 
         self.declare_parameter("drive_topic")
-        DRIVE_TOPIC = self.get_parameter("drive_topic").value # set in launch file; different for simulator vs racecar
+        DRIVE_TOPIC = '/line_follower_drive' # self.get_parameter("drive_topic").value # set in launch file; different for simulator vs racecar
 
         self.drive_pub = self.create_publisher(AckermannDriveStamped, DRIVE_TOPIC, 3)
         self.error_pub = self.create_publisher(ParkingError, "/parking_error", 10)
@@ -28,6 +28,8 @@ class ParkingController(Node):
         self.parking_distance = 0# .75 # meters; try playing with this number!
         self.relative_x = 0
         self.relative_y = 0
+
+        self.desired_relative_y = 0.5
 
         self.need_to_back_up = False
         self.last_wheel_angle = 0.0
@@ -41,7 +43,7 @@ class ParkingController(Node):
 
     def relative_cone_callback(self, msg):
         self.relative_x = msg.x_pos
-        self.relative_y = msg.y_pos
+        self.relative_y = msg.y_pos - self.desired_relative_y    # CHANGE HERE # (for clarity, i made it so that if it is relative y away, it thinks it is straight ahead)
         drive_cmd = AckermannDriveStamped()
 
         #################################
